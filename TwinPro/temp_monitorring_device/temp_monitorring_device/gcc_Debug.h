@@ -422,6 +422,9 @@
 #ifndef __DQ_IBIT__
 #define __DQ_IBIT__ 0
 #endif
+#ifndef STM32F407xx
+#define STM32F407xx 1
+#endif
 #ifndef __FLT32_HAS_INFINITY__
 #define __FLT32_HAS_INFINITY__ 1
 #endif
@@ -703,6 +706,9 @@
 #ifndef __GCC_ATOMIC_INT_LOCK_FREE
 #define __GCC_ATOMIC_INT_LOCK_FREE 2
 #endif
+#ifndef DEBUG_DEFAULT_INTERRUPT_HANDLERS
+#define DEBUG_DEFAULT_INTERRUPT_HANDLERS 1
+#endif
 #ifndef __FLT32_MANT_DIG__
 #define __FLT32_MANT_DIG__ 24
 #endif
@@ -756,6 +762,9 @@
 #endif
 #ifndef __UDQ_FBIT__
 #define __UDQ_FBIT__ 64
+#endif
+#ifndef DEBUG
+#define DEBUG 1
 #endif
 #ifndef __INT8_TYPE__
 #define __INT8_TYPE__ signed char
@@ -1363,16 +1372,14 @@
 #ifndef __ATOMIC_RELEASE
 #define __ATOMIC_RELEASE 3
 #endif
-#ifndef DEBUG
-#define DEBUG 1
-#endif
-#ifndef STM32F407xx
-#define STM32F407xx 
-#endif
 #endif
 
 // --- Include directories begin --- //
 //.
+//$(BSP_ROOT)/STM32F4xxxx/STM32F4xx_HAL_Driver/Inc
+//$(BSP_ROOT)/STM32F4xxxx/STM32F4xx_HAL_Driver/Inc/Legacy
+//$(BSP_ROOT)/STM32F4xxxx/CMSIS_HAL/Device/ST/STM32F4xx/Include
+//$(BSP_ROOT)/STM32F4xxxx/CMSIS_HAL/Include
 //$(TOOLCHAIN_ROOT)\arm-eabi\include\c++\7.2.0
 //$(TOOLCHAIN_ROOT)\arm-eabi\include\c++\7.2.0\arm-eabi\thumb\cortex_m4
 //$(TOOLCHAIN_ROOT)\arm-eabi\include\c++\7.2.0\backward
@@ -1380,10 +1387,6 @@
 //$(TOOLCHAIN_ROOT)\lib\gcc\arm-eabi\7.2.0\include-fixed
 //$(TOOLCHAIN_ROOT)\arm-eabi\sys-include
 //$(TOOLCHAIN_ROOT)\arm-eabi\include
-//$(BSP_ROOT)/STM32F4xxxx/STM32F4xx_HAL_Driver/Inc
-//$(BSP_ROOT)/STM32F4xxxx/STM32F4xx_HAL_Driver/Inc/Legacy
-//$(BSP_ROOT)/STM32F4xxxx/CMSIS_HAL/Device/ST/STM32F4xx/Include
-//$(BSP_ROOT)/STM32F4xxxx/CMSIS_HAL/Include
 // --- Include directories end --- //
 
 

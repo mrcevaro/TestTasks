@@ -2,7 +2,7 @@
 #include <stm32f4xx_hal.h>
 #include <stm32_hal_legacy.h>
 
-ADC_HandleTypeDef hadc1;
+
 UART_HandleTypeDef huart2;
 //
 //struct Pin 

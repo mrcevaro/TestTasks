@@ -8,6 +8,7 @@ public:
 	void Init()
 	{
 		HAL_Init();
+		__enable_irq();
 
 		RCC_OscInitTypeDef RCC_OscInitStruct = {};
 		RCC_ClkInitTypeDef RCC_ClkInitStruct = {};
@@ -19,34 +20,34 @@ public:
 		RCC_OscInitStruct.HSEState = RCC_HSE_ON;
 		RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
 		RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-		RCC_OscInitStruct.PLL.PLLM = RCC_PLLP_DIV4; //4
-		RCC_OscInitStruct.PLL.PLLN = 96;
-		RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
-		RCC_OscInitStruct.PLL.PLLQ = RCC_PLLP_DIV4; //4
+		RCC_OscInitStruct.PLL.PLLM = 4; //4
+		RCC_OscInitStruct.PLL.PLLN = 168;
+		RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+		RCC_OscInitStruct.PLL.PLLQ = 4; //4
 		
 		if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
 		{
+
 		}
-			RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-			RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-			RCC_OscInitStruct.HSICalibrationValue = 16;
-			RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+
+		RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK
+			| RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
+		RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+		RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV1;
+		RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+		RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 		
-			
+		if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
+		{
+		
+		}
+		
+		uint32_t clock = HAL_RCC_GetHCLKFreq();
 
+		HAL_SYSTICK_Config(clock / 1000);
+		HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
+		
 
-		__HAL_RCC_ADC1_CLK_ENABLE();
-
-
-		/*__GPIOD_CLK_ENABLE();
-		GPIO_InitTypeDef GPIO_InitStructure;
-
-		GPIO_InitStructure.Pin = GPIO_PIN_12;
-
-		GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
-		GPIO_InitStructure.Speed = GPIO_SPEED_HIGH;
-		GPIO_InitStructure.Pull = GPIO_NOPULL;
-		HAL_GPIO_Init(GPIOD, &GPIO_InitStructure);*/
 	}
 };
 

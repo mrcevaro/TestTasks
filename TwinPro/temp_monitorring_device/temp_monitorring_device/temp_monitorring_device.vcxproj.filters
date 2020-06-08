@@ -668,10 +668,19 @@
     <ClInclude Include="device.hpp">
       <Filter>Header files</Filter>
     </ClInclude>
-    <ClInclude Include="io.hpp">
+    <ClInclude Include="uart.hpp">
       <Filter>Header files</Filter>
     </ClInclude>
-    <ClInclude Include="uart.hpp">
+    <ClInclude Include="temperature_sensor.hpp">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="communicate.hpp">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="fan.hpp">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="monitoring.hpp">
       <Filter>Header files</Filter>
     </ClInclude>
   </ItemGroup>
