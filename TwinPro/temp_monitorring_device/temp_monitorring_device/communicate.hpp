@@ -9,6 +9,12 @@ uint8_t timeOut = 0;
 UART_HandleTypeDef _husart2;
 
 
+enum MessageValidly
+{
+	validly,
+	wrong
+};
+
 enum HeadPacket
 {
 	recive = 0xCD,
@@ -18,23 +24,43 @@ enum HeadPacket
 enum TypePacket
 {
 	 write = 0x01,
-	 read = 0x02
+	 read = 0x02,
 };
 
-enum Reg
+enum RegType
 {
 	control = 0x10,
 	status = 0x20,
 	temperature = 0x21,
-	fan_power = 0x22
+	fan_power = 0x22,
 };
+
+
+struct Register
+{
+	RegType type;
+	uint8_t value;
+};
+
+// 0x00 - start temp control, 0x02 - stop temp control, 0x04 - reset chip
+Register reg_control { RegType::control, {0x02} };
+
+// 0x00 - state temp control (0-OFF, 1-ON), 0x02 - overheat(0-OFF, 1-ON)
+Register reg_status{ RegType::status, {0x02} };
+
+// Return current Temp (-...+)
+Register reg_temperature{ RegType::temperature, {} };
+
+// Return current pwm of Fun (0-100%)
+Register reg_fan_power{ RegType::fan_power, {} };
+
 
 struct Packet 
 {
 	 HeadPacket _head ;
 	 TypePacket _type_packet ;
-	 Reg _reg ;
-	 uint8_t _data = 0;
+	 RegType _reg ;
+	 uint8_t _data = 0 ;
 	 uint8_t _crc = 0;
 };
 
@@ -109,11 +135,36 @@ public:
 	Packet GetPacket()
 	{
 		
-		_recive_message._type_packet = GetTypePacket();
-		_recive_message._crc = buffer[4];
 
 		return _recive_message;
 	}
+
+
+	MessageValidly MessageValidly(uint8_t* message)
+	{
+		if (IsParseMessage(message)) return MessageValidly::validly;
+		return MessageValidly::wrong;
+	}
+
+	bool IsParseMessage(uint8_t* message)
+	{
+		if (!IsCrcCorrect(message, message[4])) return false;
+		_recive_message._crc = message[4];
+
+		if (!IsHeadCorrect) return false;
+		_recive_message._head = (HeadPacket)message[0]; //?
+
+		if (!IsTypePacketCorrect) return false;
+		_recive_message._type_packet = (TypePacket) message[1]; //?
+
+		if (!IsRegCorrect) return false;
+		_recive_message._reg = (RegType) message[2]; //?
+
+
+		_recive_message._type_packet = GetTypePacket(buffer[1]);
+		_recive_message._crc = buffer[4];
+	}
+
 
 	uint8_t buffer[5] = {};
 
@@ -124,17 +175,32 @@ private:
 	uint32_t _baudrate = 9600;
 	Packet _recive_message = {};
 
-	TypePacket GetTypePacket()
+	bool IsHeadCorrect(uint8_t* message)
 	{
-		switch (buffer[1])
+		if (message[0] == HeadPacket::recive || message[0] == HeadPacket::transmit)
 		{
-		case 0x01:
-			return TypePacket::write;
-			break;
-		case 0x02:
-			return TypePacket::read;
-			break;
+			return true;
 		}
+		return false;
+	}
+
+	bool IsTypePacketCorrect(uint8_t* message)
+	{
+		if (message[1] == TypePacket::read || message[1] == TypePacket::write)
+		{
+			return true;
+		}
+		return false;
+	}
+
+	bool IsRegCorrect(uint8_t* message)
+	{
+		uint8_t regs[sizeof(RegType)] = { RegType::control, RegType::fan_power, RegType::status, RegType::temperature };
+		for (size_t i = 0; i < sizeof(RegType); i++)
+		{
+			if (message[2] != regs[i]) return false;
+		}
+		return true;
 	}
 };
 
