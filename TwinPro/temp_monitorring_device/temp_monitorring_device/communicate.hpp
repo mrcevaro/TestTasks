@@ -9,7 +9,7 @@ uint8_t timeOut = 0;
 UART_HandleTypeDef _husart2;
 
 
-enum MessageValidly
+enum CorrectMessage
 {
 	validly,
 	wrong
@@ -27,7 +27,7 @@ enum TypePacket
 	 read = 0x02,
 };
 
-enum RegType
+enum RegAddress
 {
 	control = 0x10,
 	status = 0x20,
@@ -35,31 +35,110 @@ enum RegType
 	fan_power = 0x22,
 };
 
+enum StatusFlags
+{
+	on,
+	off,
+	overheat,
+	none
+};
+//struct Register
+//{
+//	RegType type;
+//	uint8_t value;
+//};
 
 struct Register
 {
-	RegType type;
-	uint8_t value;
+	int8_t CTRL; //0x10
+	int8_t ST;   // 0x20
+	int8_t TEMP;  // 0x21
+	int8_t PWM;  // 0x22
 };
 
-// 0x00 - start temp control, 0x02 - stop temp control, 0x04 - reset chip
-Register reg_control { RegType::control, {0x02} };
+//// 0x00 - start temp control, 0x02 - stop temp control, 0x04 - reset chip
+//Register reg_control = { RegType::control, 0x02 };
+//
+//// 0x00 - state temp control (0-OFF, 1-ON), 0x02 - overheat(0-OFF, 1-ON)
+//Register reg_status{ RegType::status,  };
+//
+//// Return current Temp (-...+)
+// Register reg_temperature{ RegType::temperature,  };
+//
+//// Return current pwm of Fun (0-100%)
+//Register reg_fan_power{ RegType::fan_power,  };
 
-// 0x00 - state temp control (0-OFF, 1-ON), 0x02 - overheat(0-OFF, 1-ON)
-Register reg_status{ RegType::status, {0x02} };
 
-// Return current Temp (-...+)
-Register reg_temperature{ RegType::temperature, {} };
+class Mcu
+{
+public:
+	
+	void RunTempControl()
+	{
+		_mcu_reg.CTRL = (1 << 0);
+	}
 
-// Return current pwm of Fun (0-100%)
-Register reg_fan_power{ RegType::fan_power, {} };
+	void StopTempControl()
+	{
+		_mcu_reg.CTRL = (1 << 1);
+	}
+
+	void Reset()
+	{
+		_mcu_reg.CTRL = (2 << 1);
+	}
+
+	int8_t GetValueReg(RegAddress reg)
+	{
+		switch (reg)
+		{
+		case status:
+			return _mcu_reg.ST;
+		case temperature:
+			return _mcu_reg.TEMP;
+		case fan_power:
+			return _mcu_reg.PWM;
+		default:
+			break;
+		}
+		
+	}
+
+private:
+	Register _mcu_reg;
+
+	void SetStatus(StatusFlags fl)
+	{
+		switch (fl)
+		{
+		case on:
+			_mcu_reg.ST = (1 << 0);
+			break;
+		case off:
+			_mcu_reg.ST = (0 << 1);
+			break;
+		case overheat:
+			_mcu_reg.ST = 
+			break;
+		case none:
+			break;
+		default:
+			break;
+		}
+
+	}
+	
+
+};
+
+
 
 
 struct Packet 
 {
 	 HeadPacket _head ;
 	 TypePacket _type_packet ;
-	 RegType _reg ;
+	 RegAddress _reg ;
 	 uint8_t _data = 0 ;
 	 uint8_t _crc = 0;
 };
@@ -140,29 +219,33 @@ public:
 	}
 
 
-	MessageValidly MessageValidly(uint8_t* message)
+	CorrectMessage MessageValidly(uint8_t* message)
 	{
-		if (IsParseMessage(message)) return MessageValidly::validly;
-		return MessageValidly::wrong;
+		if (IsParseMessage(message))
+		{
+			return CorrectMessage::validly;
+		}
+		return CorrectMessage::wrong;
 	}
 
 	bool IsParseMessage(uint8_t* message)
 	{
+		if (!IsHeadCorrect(message)) return false;
+		_recive_message._head = (HeadPacket)message[0]; //?
+
 		if (!IsCrcCorrect(message, message[4])) return false;
 		_recive_message._crc = message[4];
 
-		if (!IsHeadCorrect) return false;
-		_recive_message._head = (HeadPacket)message[0]; //?
+		
 
-		if (!IsTypePacketCorrect) return false;
+		if (!IsTypePacketCorrect(message)) return false;
 		_recive_message._type_packet = (TypePacket) message[1]; //?
 
-		if (!IsRegCorrect) return false;
-		_recive_message._reg = (RegType) message[2]; //?
+		if (!IsRegCorrect(message)) return false;
+		_recive_message._reg = (RegAddress) message[2]; //?
 
+		_recive_message._data = message[3];
 
-		_recive_message._type_packet = GetTypePacket(buffer[1]);
-		_recive_message._crc = buffer[4];
 	}
 
 
@@ -195,39 +278,44 @@ private:
 
 	bool IsRegCorrect(uint8_t* message)
 	{
-		uint8_t regs[sizeof(RegType)] = { RegType::control, RegType::fan_power, RegType::status, RegType::temperature };
-		for (size_t i = 0; i < sizeof(RegType); i++)
+		uint8_t regs[4] = { RegAddress::control, RegAddress::fan_power, RegAddress::status, RegAddress::temperature };
+		for (size_t i = 0; i < 4; i++)
 		{
-			if (message[2] != regs[i]) return false;
+			if (message[2] == regs[i]) return true;
 		}
-		return true;
+		return false;
 	}
 };
 
 SerialPort _serial_port;
 
-
+#ifdef __cplusplus
+extern "C"
+#endif
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	
+
 	if (huart == &_husart2)
 	{
 		if (firstByteWait != 0)
 		{
 			firstByteWait = 0;
-			
 			HAL_UART_Receive_IT(&_husart2, _serial_port.buffer + 1, 4);
 		}
 		else
 		{
-			if (_serial_port.buffer[0] == HeadPacket::recive &&  _serial_port.IsCrcCorrect(_serial_port.buffer, _serial_port.buffer[4]))
+			if (_serial_port.MessageValidly(_serial_port.buffer) == CorrectMessage::validly)
 			{
 				_serial_port.ClearBuffer();
 				firstByteWait = 1;
 				HAL_UART_Receive_IT(&_husart2, _serial_port.buffer, 1);
 			}
-			
-		
+			else {
+				_serial_port.ClearBuffer();
+				firstByteWait = 1;
+				HAL_UART_Receive_IT(&_husart2, _serial_port.buffer, 1);
+			}
+
 		}
 	}
 }

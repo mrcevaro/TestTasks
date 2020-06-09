@@ -7,7 +7,7 @@ Device _device;
 
 //Communicate _communicate;
 Monitoring _monitoring;
-
+Mcu mc;
 
 int main()
 {
@@ -18,9 +18,12 @@ int main()
 
 	while (true)
 	{
-
-		_monitoring.IsOnMonitoring();
-	//	HAL_Delay(1000);
+		mc.RunTempControl();
+		mc.StopTempControl();
+		mc.Reset();
+		//_monitoring.IsOnMonitoring();
+	//HAL_Delay(1000);
+	volatile int x = 0;
 	//	temp = _temp_sensor.GetTemp();
 		
 		
@@ -28,7 +31,7 @@ int main()
 		
 		//_serial_port.TransmitMessage(buffer);
 		
-		
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET);
 	}
 
 	//HAL_Init();
