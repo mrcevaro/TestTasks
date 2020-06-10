@@ -20,18 +20,20 @@ int main()
 	{
 		mc.RunTempControl();
 		mc.StopTempControl();
-		mc.Reset();
-		//_monitoring.IsOnMonitoring();
+		//mc.Reset();
+		mc.SetStatusMcu(StatusFlags::on);
+	
+		mc.SetStatusMcu(StatusFlags::overheat);
+		
+		mc.SetStatusMcu(StatusFlags::off);
+		mc.SetStatusMcu(StatusFlags::none);
+		
+		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_SET)
+		{
+			_monitoring.UpPower();
+		}
 	//HAL_Delay(1000);
-	volatile int x = 0;
-	//	temp = _temp_sensor.GetTemp();
-		
-		
-		//_serial_port.ReceiveMessage(buffer);
-		
-		//_serial_port.TransmitMessage(buffer);
-		
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET);
+
 	}
 
 	//HAL_Init();

@@ -37,8 +37,8 @@ enum RegAddress
 
 enum StatusFlags
 {
-	on,
-	off,
+	on_temp_control,
+	off_temp_control,
 	overheat,
 	none
 };
@@ -50,10 +50,10 @@ enum StatusFlags
 
 struct Register
 {
-	int8_t CTRL; //0x10
-	int8_t ST;   // 0x20
-	int8_t TEMP;  // 0x21
-	int8_t PWM;  // 0x22
+	int8_t _ctrl; //0x10
+	int8_t _st;   // 0x20
+	int8_t _temp;  // 0x21
+	int8_t _pwm;  // 0x22
 };
 
 //// 0x00 - start temp control, 0x02 - stop temp control, 0x04 - reset chip
@@ -75,60 +75,76 @@ public:
 	
 	void RunTempControl()
 	{
-		_mcu_reg.CTRL = (1 << 0);
+		_reg._ctrl = (1 << 0);
+		_reg._ctrl &= (0 << 1);
+		SetStatusMcu(StatusFlags::on_temp_control);
 	}
 
 	void StopTempControl()
 	{
-		_mcu_reg.CTRL = (1 << 1);
+		_reg._ctrl = (1 << 1);
+		_reg._ctrl &= (0 << 0);
+		SetStatusMcu(StatusFlags::off_temp_control);
 	}
 
 	void Reset()
 	{
-		_mcu_reg.CTRL = (2 << 1);
+		_reg._ctrl |= (2 << 1);
+		NVIC_SystemReset();
 	}
 
-	int8_t GetValueReg(RegAddress reg)
+	const int8_t GetStatusMcu()
+	{
+		return _reg._st;
+	}
+
+	const int8_t ReadValueReg(RegAddress reg)
 	{
 		switch (reg)
 		{
-		case status:
-			return _mcu_reg.ST;
 		case temperature:
-			return _mcu_reg.TEMP;
+			return _reg._temp;
 		case fan_power:
-			return _mcu_reg.PWM;
-		default:
-			break;
+			return _reg._pwm;
 		}
-		
 	}
 
-private:
-	Register _mcu_reg;
+	void WriteValueToReg(RegAddress reg, int8_t val)
+	{
+		switch (reg)
+		{
+		case temperature:
+			 _reg._temp = val;
+			 break;
+		case fan_power:
+			_reg._pwm = val;
+			 break;
+		}
 
-	void SetStatus(StatusFlags fl)
+	}
+
+	void SetStatusMcu(StatusFlags fl)
 	{
 		switch (fl)
 		{
-		case on:
-			_mcu_reg.ST = (1 << 0);
+		case on_temp_control:
+			_reg._st |= (1 << 0);
 			break;
-		case off:
-			_mcu_reg.ST = (0 << 1);
+		case off_temp_control:
+			_reg._st &= (0 << 0);
 			break;
 		case overheat:
-			_mcu_reg.ST = 
+			_reg._st |= (1 << 1);
 			break;
 		case none:
-			break;
-		default:
+			_reg._st &= (0 << 1);
 			break;
 		}
 
 	}
-	
 
+private:
+	Register _reg;
 };
 
 
@@ -156,7 +172,8 @@ public:
 	{
 		
 		__HAL_RCC_USART2_CLK_ENABLE();
-		__HAL_RCC_GPIOA_CLK_ENABLE();
+		
+	
 
 		GPIO_InitTypeDef GPIO_InitStructure;
 

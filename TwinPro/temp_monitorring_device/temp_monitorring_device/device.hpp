@@ -46,7 +46,17 @@ public:
 
 		HAL_SYSTICK_Config(clock / 1000);
 		HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
-		
+	
+
+		__HAL_RCC_GPIOA_CLK_ENABLE();
+
+		GPIO_InitTypeDef GPIO_InitStructure;
+
+		GPIO_InitStructure.Pin = GPIO_PIN_0;
+		GPIO_InitStructure.Mode = GPIO_MODE_INPUT;
+		GPIO_InitStructure.Speed = GPIO_SPEED_HIGH;
+		GPIO_InitStructure.Pull = GPIO_PULLDOWN;
+		HAL_GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 	}
 };

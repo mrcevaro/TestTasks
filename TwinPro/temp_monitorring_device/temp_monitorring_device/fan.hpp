@@ -2,6 +2,13 @@
 #include <stm32f4xx_hal.h>
 #include <stm32_hal_legacy.h>
 
+enum LevelPowers
+{
+	per_100 = 20999,
+	per_50 = 10499,
+
+};
+
 class Fan
 {
 public:
@@ -19,7 +26,7 @@ public:
 		GPIO_InitStructure.Pull = GPIO_NOPULL;
 		HAL_GPIO_Init(GPIOE, &GPIO_InitStructure);
 
-		TIM_HandleTypeDef fan_pwm_timer = {};
+		
 		fan_pwm_timer.Instance = TIM1;
 		fan_pwm_timer.Init.Prescaler = 7;
 		fan_pwm_timer.Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -30,7 +37,7 @@ public:
 
 		TIM_OC_InitTypeDef sConfigOC;
 		sConfigOC.OCMode = TIM_OCMODE_PWM1;
-		sConfigOC.Pulse = 10499; // 10499 = 50%
+		sConfigOC.Pulse = 0; // 10499 = 50%
 		sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
 		sConfigOC.OCFastMode = TIM_OCFAST_ENABLE;
 		sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
@@ -39,10 +46,50 @@ public:
 
 		HAL_TIM_PWM_ConfigChannel(&fan_pwm_timer, &sConfigOC, TIM_CHANNEL_1);
 
+		
+	}
+
+
+	void SetPower(int8_t power)
+	{
+		if (power > 100 || power < 0) return;
+		if (power != _cur_power)
+		{
+			_cur_power = power;
+
+			TIM1->CCR1 = GetPulseLength(power);
+		}
+	}
+
+	void On()
+	{
 		HAL_TIM_PWM_Start(&fan_pwm_timer, TIM_CHANNEL_1);
+		_fan_status = true;
+	}
+
+	void Off()
+	{
+		HAL_TIM_PWM_Stop(&fan_pwm_timer, TIM_CHANNEL_1);
+		_fan_status = false;
+	}
+
+
+	bool IsOn()
+	{
+
+		return _fan_status;
 	}
 
 private:
+	
+	uint32_t GetPulseLength(int8_t percent)
+	{
+		return ((_tim_period + 1) * percent) / 100 - 1;
+	}
 
+	static const uint32_t _tim_period = 20999;
+	TIM_HandleTypeDef fan_pwm_timer = {};
+	int8_t _cur_power = 0;
 
+	bool _fan_status = false;
 };
