@@ -1,36 +1,23 @@
 #include "common.hpp"
-#include "device.hpp"
+
 #include "monitoring.hpp"
 
-Device _device;
 
-
-//Communicate _communicate;
-Monitoring _monitoring;
-Mcu mc;
+TempMonitoring _monitoring;
 
 int main()
 {
 
-	_device.Init();
+
 	_monitoring.Init();
 
 
 	while (true)
 	{
-		mc.RunTempControl();
-		mc.StopTempControl();
-		//mc.Reset();
-		mc.SetStatusMcu(StatusFlags::on);
-	
-		mc.SetStatusMcu(StatusFlags::overheat);
-		
-		mc.SetStatusMcu(StatusFlags::off);
-		mc.SetStatusMcu(StatusFlags::none);
 		
 		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_SET)
 		{
-			_monitoring.UpPower();
+			
 		}
 	//HAL_Delay(1000);
 

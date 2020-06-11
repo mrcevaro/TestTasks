@@ -59,13 +59,10 @@ public:
 		HAL_GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 	}
+
+	void ResetDevice()
+	{
+		NVIC_SystemReset();
+	}
 };
 
-#ifdef __cplusplus
-extern "C"
-#endif
-void SysTick_Handler(void)
-{
-	HAL_IncTick();
-	HAL_SYSTICK_IRQHandler();
-}

@@ -79,10 +79,12 @@
   </ImportGroup>
   <ItemGroup />
   <ItemGroup>
+    <ClCompile Include="communicate.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="system_stm32f4xx.c" />
     <ClInclude Include="communicate.hpp" />
     <ClInclude Include="fan.hpp" />
+    <ClInclude Include="mcu.h" />
     <ClInclude Include="monitoring.hpp" />
     <ClInclude Include="uart.hpp" />
     <None Include="stm32.mak" />

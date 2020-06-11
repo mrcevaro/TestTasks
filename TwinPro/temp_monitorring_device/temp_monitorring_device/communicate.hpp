@@ -1,7 +1,7 @@
 #pragma once
 #include <stm32f4xx_hal.h>
 #include <stm32_hal_legacy.h>
-
+#include "mcu.h"
 
 uint8_t firstByteWait = 1;
 
@@ -15,7 +15,7 @@ enum CorrectMessage
 	wrong
 };
 
-enum HeadPacket
+enum HeadPacket : uint8_t
 {
 	recive = 0xCD,
 	transmit = 0xEA
@@ -26,127 +26,6 @@ enum TypePacket
 	 write = 0x01,
 	 read = 0x02,
 };
-
-enum RegAddress
-{
-	control = 0x10,
-	status = 0x20,
-	temperature = 0x21,
-	fan_power = 0x22,
-};
-
-enum StatusFlags
-{
-	on_temp_control,
-	off_temp_control,
-	overheat,
-	none
-};
-//struct Register
-//{
-//	RegType type;
-//	uint8_t value;
-//};
-
-struct Register
-{
-	int8_t _ctrl; //0x10
-	int8_t _st;   // 0x20
-	int8_t _temp;  // 0x21
-	int8_t _pwm;  // 0x22
-};
-
-//// 0x00 - start temp control, 0x02 - stop temp control, 0x04 - reset chip
-//Register reg_control = { RegType::control, 0x02 };
-//
-//// 0x00 - state temp control (0-OFF, 1-ON), 0x02 - overheat(0-OFF, 1-ON)
-//Register reg_status{ RegType::status,  };
-//
-//// Return current Temp (-...+)
-// Register reg_temperature{ RegType::temperature,  };
-//
-//// Return current pwm of Fun (0-100%)
-//Register reg_fan_power{ RegType::fan_power,  };
-
-
-class Mcu
-{
-public:
-	
-	void RunTempControl()
-	{
-		_reg._ctrl = (1 << 0);
-		_reg._ctrl &= (0 << 1);
-		SetStatusMcu(StatusFlags::on_temp_control);
-	}
-
-	void StopTempControl()
-	{
-		_reg._ctrl = (1 << 1);
-		_reg._ctrl &= (0 << 0);
-		SetStatusMcu(StatusFlags::off_temp_control);
-	}
-
-	void Reset()
-	{
-		_reg._ctrl |= (2 << 1);
-		NVIC_SystemReset();
-	}
-
-	const int8_t GetStatusMcu()
-	{
-		return _reg._st;
-	}
-
-	const int8_t ReadValueReg(RegAddress reg)
-	{
-		switch (reg)
-		{
-		case temperature:
-			return _reg._temp;
-		case fan_power:
-			return _reg._pwm;
-		}
-	}
-
-	void WriteValueToReg(RegAddress reg, int8_t val)
-	{
-		switch (reg)
-		{
-		case temperature:
-			 _reg._temp = val;
-			 break;
-		case fan_power:
-			_reg._pwm = val;
-			 break;
-		}
-
-	}
-
-	void SetStatusMcu(StatusFlags fl)
-	{
-		switch (fl)
-		{
-		case on_temp_control:
-			_reg._st |= (1 << 0);
-			break;
-		case off_temp_control:
-			_reg._st &= (0 << 0);
-			break;
-		case overheat:
-			_reg._st |= (1 << 1);
-			break;
-		case none:
-			_reg._st &= (0 << 1);
-			break;
-		}
-
-	}
-
-private:
-	Register _reg;
-};
-
 
 
 
@@ -168,6 +47,7 @@ struct Packet
 class SerialPort
 {
 public:
+
 	void Init() 
 	{
 		
@@ -200,7 +80,7 @@ public:
 		HAL_NVIC_EnableIRQ(USART2_IRQn);
 	    
 		firstByteWait = 1;
-		HAL_UART_Receive_IT(&_husart2, buffer, 1);
+		HAL_UART_Receive_IT(&_husart2, _recive_buffer, 1);
 	
 	}
 
@@ -220,7 +100,7 @@ public:
 		return crc == xorw;
 	}
 
-	void ClearBuffer()
+	void ClearBuffer(uint8_t* buffer)
 	{
 		for (int i = 0; i < sizeof(buffer); i++)
 		{
@@ -228,18 +108,74 @@ public:
 		}
 	}
 
-	Packet GetPacket()
+	Packet GetRecivePacket()
 	{
-		
 
-		return _recive_message;
+		return _recive_packet;
 	}
 
+
+	Packet GetTranssmitPacket()
+	{
+
+		return _transsmit_packet;
+	}
+
+	void CreatePacket(uint8_t* message, Packet& packet)
+	{
+		packet._head = (HeadPacket)message[0]; //?
+		packet._type_packet = (TypePacket) message[1]; //?
+		packet._reg = (RegAddress) message[2]; //?
+		packet._data = message[3];
+		packet._crc = message[4];
+	}
+
+
+	uint8_t GetCrc(uint8_t* packet)
+	{
+		uint8_t xorw = 0;
+		for (int i = 0; i < sizeof(packet) - 1; i++) {
+			xorw = xorw ^ packet[i];
+		}
+		return xorw;
+	}
+
+	void CreateAnswerMessage()
+	{
+		_transsmit_packet._head = HeadPacket::transmit;
+		_transsmit_packet._type_packet = _recive_packet._type_packet;
+		_transsmit_packet._reg = _recive_packet._reg;
+
+		if (_transsmit_packet._type_packet == TypePacket::write)
+		{
+			_transsmit_packet._data = _recive_packet._data;
+		}
+		else
+		{
+			if (_recive_packet._reg == RegAddress::status)
+			{
+				_transsmit_packet._data = mcu.GetStatusMcu();
+			}
+			else
+			{
+				_transsmit_packet._data = mcu.ReadValueReg(_recive_packet._reg);
+			}
+		}
+
+		_transsmit_packet._crc = GetCrc((uint8_t*)&_transsmit_packet);
+	}
+
+	void SendAnswerMessage()
+	{
+		CreateAnswerMessage();
+		HAL_UART_Transmit_IT(&_husart2, (uint8_t*)&_transsmit_packet, 5);
+	}
 
 	CorrectMessage MessageValidly(uint8_t* message)
 	{
 		if (IsParseMessage(message))
 		{
+			CreatePacket(message, _recive_packet);
 			return CorrectMessage::validly;
 		}
 		return CorrectMessage::wrong;
@@ -248,32 +184,36 @@ public:
 	bool IsParseMessage(uint8_t* message)
 	{
 		if (!IsHeadCorrect(message)) return false;
-		_recive_message._head = (HeadPacket)message[0]; //?
+		//_recive_packet._head = (HeadPacket)message[0]; //?
 
 		if (!IsCrcCorrect(message, message[4])) return false;
-		_recive_message._crc = message[4];
+		//_recive_packet._crc = message[4];
 
 		
 
 		if (!IsTypePacketCorrect(message)) return false;
-		_recive_message._type_packet = (TypePacket) message[1]; //?
+		//_recive_packet._type_packet = (TypePacket) message[1]; //?
 
 		if (!IsRegCorrect(message)) return false;
-		_recive_message._reg = (RegAddress) message[2]; //?
+		//_recive_packet._reg = (RegAddress) message[2]; //?
 
-		_recive_message._data = message[3];
-
+		//_recive_packet._data = message[3];
+		return true;
 	}
 
 
-	uint8_t buffer[5] = {};
 
+
+	uint8_t _recive_buffer[5] = {};
+	uint8_t _transsmite_buffer[5] = {};
 
 
 private:
 	
+
 	uint32_t _baudrate = 9600;
-	Packet _recive_message = {};
+	Packet _recive_packet = {};
+	Packet _transsmit_packet = {};
 
 	bool IsHeadCorrect(uint8_t* message)
 	{
@@ -304,7 +244,8 @@ private:
 	}
 };
 
-SerialPort _serial_port;
+SerialPort serial_port;
+
 
 #ifdef __cplusplus
 extern "C"
@@ -317,22 +258,22 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		if (firstByteWait != 0)
 		{
 			firstByteWait = 0;
-			HAL_UART_Receive_IT(&_husart2, _serial_port.buffer + 1, 4);
+			HAL_UART_Receive_IT(&_husart2, serial_port._recive_buffer + 1, 4);
 		}
 		else
 		{
-			if (_serial_port.MessageValidly(_serial_port.buffer) == CorrectMessage::validly)
+			if (serial_port.MessageValidly(serial_port._recive_buffer) == CorrectMessage::validly)
 			{
-				_serial_port.ClearBuffer();
+				serial_port.SendAnswerMessage();
+				serial_port.ClearBuffer(serial_port._recive_buffer);
 				firstByteWait = 1;
-				HAL_UART_Receive_IT(&_husart2, _serial_port.buffer, 1);
+				HAL_UART_Receive_IT(&_husart2, serial_port._recive_buffer, 1);
 			}
 			else {
-				_serial_port.ClearBuffer();
+				serial_port.ClearBuffer(serial_port._recive_buffer);
 				firstByteWait = 1;
-				HAL_UART_Receive_IT(&_husart2, _serial_port.buffer, 1);
+				HAL_UART_Receive_IT(&_husart2, serial_port._recive_buffer, 1);
 			}
-
 		}
 	}
 }

@@ -3,32 +3,60 @@
 #include "temperature_sensor.hpp"
 #include "fan.hpp"
 #include "communicate.hpp"
+#include "device.hpp"
+
+Device _device;
+
 
 volatile uint16_t systick_ms = 0;
 
-class Monitoring
+
+
+class TempMonitoring
 {
 public:
 
+
+	void TempObserver()
+	{
+		
+	}
+
+	void GetStateMcu()
+	{
+
+	}
+
 	void Init()
 	{
+		_device.Init();
 		_temp_sensor.Init();
 		_fan.Init();
-		_serial_port.Init();
+	
+		serial_port.Init();
 		_fan.On();
 	}
 
 	
 	void SetSpeedFan(uint8_t speed)
 	{
-		_mcu.WriteValueToReg(RegAddress::fan_power, speed);
+		mcu.WriteValueToReg(RegAddress::fan_power, speed);
 		_fan.SetPower(speed);
 	}
 
+	void OnMonitoring() 
+	{
+		mcu.RunTempControl();
+	}
+
+	void StopMonitoring()
+	{
+		mcu.StopTempControl();
+	}
 
 	bool IsOnMonitoring()
 	{
-		if (_mcu.GetStatusMcu() & 0x01)
+		if (mcu.GetStatusMcu() & 0x01)
 		{
 			return true;
 		}
@@ -41,9 +69,9 @@ public:
 private:
 	InternalTemperatureSensor _temp_sensor;
 	Fan _fan;
-	Mcu _mcu;
+	
 	Packet _packet;
-
+	
 	int8_t _cur_power = 0;
 
 	static const uint16_t _control_time_ms = 5000; //5s
@@ -63,7 +91,7 @@ private:
 	}
 };
 
-Monitoring message;
+TempMonitoring message;
 
 #ifdef __cplusplus
 extern "C"

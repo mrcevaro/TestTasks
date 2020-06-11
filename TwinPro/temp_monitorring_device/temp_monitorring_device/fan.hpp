@@ -76,7 +76,6 @@ public:
 
 	bool IsOn()
 	{
-
 		return _fan_status;
 	}
 
