@@ -84,9 +84,8 @@
     <ClCompile Include="system_stm32f4xx.c" />
     <ClInclude Include="communicate.hpp" />
     <ClInclude Include="fan.hpp" />
-    <ClInclude Include="mcu.h" />
-    <ClInclude Include="monitoring.hpp" />
-    <ClInclude Include="uart.hpp" />
+    <ClInclude Include="mcu.hpp" />
+    <ClInclude Include="control_device.hpp" />
     <None Include="stm32.mak" />
     <ClCompile Include="$(BSP_ROOT)\STM32F4xxxx\StartupFiles\startup_stm32f407xx.c" />
     <ClCompile Include="$(BSP_ROOT)\STM32F4xxxx\STM32F4xx_HAL_Driver\Src\stm32f4xx_hal.c" />

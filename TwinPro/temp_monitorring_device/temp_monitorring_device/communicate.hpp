@@ -1,13 +1,14 @@
 #pragma once
 #include <stm32f4xx_hal.h>
 #include <stm32_hal_legacy.h>
-#include "mcu.h"
+
+#include "common.hpp"
 
 uint8_t firstByteWait = 1;
-
 uint8_t timeOut = 0;
-UART_HandleTypeDef _husart2;
+uint8_t buffer[5] = {};
 
+UART_HandleTypeDef _husart2;
 
 enum CorrectMessage
 {
@@ -15,45 +16,13 @@ enum CorrectMessage
 	wrong
 };
 
-enum HeadPacket : uint8_t
-{
-	recive = 0xCD,
-	transmit = 0xEA
-};
-
-enum TypePacket
-{
-	 write = 0x01,
-	 read = 0x02,
-};
-
-
-
-struct Packet 
-{
-	 HeadPacket _head ;
-	 TypePacket _type_packet ;
-	 RegAddress _reg ;
-	 uint8_t _data = 0 ;
-	 uint8_t _crc = 0;
-};
-
-//Packet   _recive_message = { 0xCD };
-//Packet _transmite_message = { 0xEA };
-
-
-
-
 class SerialPort
 {
 public:
 
-	void Init() 
+	void Init()
 	{
-		
 		__HAL_RCC_USART2_CLK_ENABLE();
-		
-	
 
 		GPIO_InitTypeDef GPIO_InitStructure;
 
@@ -65,7 +34,7 @@ public:
 		HAL_GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 		_husart2.Instance = USART2;
-		_husart2.Init.BaudRate = _baudrate;
+		_husart2.Init.BaudRate = 9600;
 		_husart2.Init.WordLength = UART_WORDLENGTH_8B;
 		_husart2.Init.StopBits = UART_STOPBITS_1;
 		_husart2.Init.Parity = UART_PARITY_NONE;
@@ -78,26 +47,14 @@ public:
 
 		HAL_NVIC_SetPriority(USART2_IRQn, 0, 0);
 		HAL_NVIC_EnableIRQ(USART2_IRQn);
-	    
+
 		firstByteWait = 1;
-		HAL_UART_Receive_IT(&_husart2, _recive_buffer, 1);
-	
+		HAL_UART_Receive_IT(&_husart2, buffer, 1);
 	}
 
 	void TransmitMessage(uint8_t* msg)
 	{
-		HAL_UART_Transmit(&_husart2, msg, sizeof(msg)+1, HAL_MAX_DELAY);
-	}
-
-
-	bool IsCrcCorrect(uint8_t* packet, uint8_t crc)
-	{
-		uint8_t xorw = 0;
-		for (int i = 0; i < sizeof(packet) - 1; i++) {
-			xorw = xorw ^ packet[i];
-		}
-
-		return crc == xorw;
+		HAL_UART_Transmit(&_husart2, msg, sizeof(msg) + 1, HAL_MAX_DELAY);
 	}
 
 	void ClearBuffer(uint8_t* buffer)
@@ -108,28 +65,62 @@ public:
 		}
 	}
 
-	Packet GetRecivePacket()
+	DataPacketMcu GetRecivePacket()
 	{
-
 		return _recive_packet;
 	}
 
-
-	Packet GetTranssmitPacket()
+	DataPacketMcu GetTranssmitPacket()
 	{
-
 		return _transsmit_packet;
 	}
 
-	void CreatePacket(uint8_t* message, Packet& packet)
+	void SendAnswerMessage()
+	{
+		ConvertDataPacketMcuToMessage();
+		HAL_UART_Transmit_IT(&_husart2, (uint8_t*)&_transsmit_packet, 5);
+	}
+
+	CorrectMessage MessageValidly(uint8_t* message)
+	{
+		if (IsParseMessage(message))
+		{
+			ConvertMessageToDataPacketMcu(message, _recive_packet);
+			CreateRequest();
+			return CorrectMessage::validly;
+		}
+		return CorrectMessage::wrong;
+	}
+
+	bool IsRequestToMcu()
+	{
+		return _request;
+	}
+
+	void ClearRequest()
+	{
+		_request = false;
+	}
+
+private:
+
+	bool IsCrcCorrect(uint8_t* packet, uint8_t crc)
+	{
+		uint8_t xorw = 0;
+		for (int i = 0; i < 4; i++) {
+			xorw = xorw ^ packet[i];
+		}
+		return crc == xorw;
+	}
+
+	void ConvertMessageToDataPacketMcu(uint8_t* message, DataPacketMcu& packet)
 	{
 		packet._head = (HeadPacket)message[0]; //?
-		packet._type_packet = (TypePacket) message[1]; //?
-		packet._reg = (RegAddress) message[2]; //?
+		packet._type_packet = (TypePacket)message[1]; //?
+		packet._reg = (RegAddress)message[2]; //?
 		packet._data = message[3];
 		packet._crc = message[4];
 	}
-
 
 	uint8_t GetCrc(uint8_t* packet)
 	{
@@ -140,7 +131,7 @@ public:
 		return xorw;
 	}
 
-	void CreateAnswerMessage()
+	void ConvertDataPacketMcuToMessage()
 	{
 		_transsmit_packet._head = HeadPacket::transmit;
 		_transsmit_packet._type_packet = _recive_packet._type_packet;
@@ -161,59 +152,24 @@ public:
 				_transsmit_packet._data = mcu.ReadValueReg(_recive_packet._reg);
 			}
 		}
-
 		_transsmit_packet._crc = GetCrc((uint8_t*)&_transsmit_packet);
-	}
-
-	void SendAnswerMessage()
-	{
-		CreateAnswerMessage();
-		HAL_UART_Transmit_IT(&_husart2, (uint8_t*)&_transsmit_packet, 5);
-	}
-
-	CorrectMessage MessageValidly(uint8_t* message)
-	{
-		if (IsParseMessage(message))
-		{
-			CreatePacket(message, _recive_packet);
-			return CorrectMessage::validly;
-		}
-		return CorrectMessage::wrong;
 	}
 
 	bool IsParseMessage(uint8_t* message)
 	{
 		if (!IsHeadCorrect(message)) return false;
-		//_recive_packet._head = (HeadPacket)message[0]; //?
-
 		if (!IsCrcCorrect(message, message[4])) return false;
-		//_recive_packet._crc = message[4];
-
-		
-
 		if (!IsTypePacketCorrect(message)) return false;
-		//_recive_packet._type_packet = (TypePacket) message[1]; //?
-
 		if (!IsRegCorrect(message)) return false;
-		//_recive_packet._reg = (RegAddress) message[2]; //?
-
-		//_recive_packet._data = message[3];
 		return true;
 	}
 
 
 
-
-	uint8_t _recive_buffer[5] = {};
-	uint8_t _transsmite_buffer[5] = {};
-
-
-private:
-	
-
-	uint32_t _baudrate = 9600;
-	Packet _recive_packet = {};
-	Packet _transsmit_packet = {};
+	void CreateRequest()
+	{
+		_request = true;
+	}
 
 	bool IsHeadCorrect(uint8_t* message)
 	{
@@ -242,6 +198,12 @@ private:
 		}
 		return false;
 	}
+
+private:
+
+	DataPacketMcu _recive_packet = {};
+	DataPacketMcu _transsmit_packet = {};
+	bool _request = false;
 };
 
 SerialPort serial_port;
@@ -252,27 +214,26 @@ extern "C"
 #endif
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-
 	if (huart == &_husart2)
 	{
 		if (firstByteWait != 0)
 		{
 			firstByteWait = 0;
-			HAL_UART_Receive_IT(&_husart2, serial_port._recive_buffer + 1, 4);
+			HAL_UART_Receive_IT(&_husart2, buffer + 1, 4);
 		}
 		else
 		{
-			if (serial_port.MessageValidly(serial_port._recive_buffer) == CorrectMessage::validly)
+			if (serial_port.MessageValidly(buffer) == CorrectMessage::validly)
 			{
 				serial_port.SendAnswerMessage();
-				serial_port.ClearBuffer(serial_port._recive_buffer);
+				serial_port.ClearBuffer(buffer);
 				firstByteWait = 1;
-				HAL_UART_Receive_IT(&_husart2, serial_port._recive_buffer, 1);
+				HAL_UART_Receive_IT(&_husart2, buffer, 1);
 			}
 			else {
-				serial_port.ClearBuffer(serial_port._recive_buffer);
+				serial_port.ClearBuffer(buffer);
 				firstByteWait = 1;
-				HAL_UART_Receive_IT(&_husart2, serial_port._recive_buffer, 1);
+				HAL_UART_Receive_IT(&_husart2, buffer, 1);
 			}
 		}
 	}

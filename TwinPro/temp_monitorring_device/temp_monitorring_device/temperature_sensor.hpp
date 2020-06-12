@@ -6,10 +6,10 @@
 class InternalTemperatureSensor
 {
 public:
-    
-    void Init()
-    {
-		
+
+	void Init()
+	{
+
 		ADC_ChannelConfTypeDef config;
 
 		__HAL_RCC_ADC1_CLK_ENABLE();
@@ -32,13 +32,12 @@ public:
 		HAL_ADC_ConfigChannel(&hadc1, &config);
 
 		HAL_ADC_Start(&hadc1);
-    }
+	}
 
 	float GetTemp()
 	{
 		uint16_t value = GetValueFromAdc();
-		float temp = ((float)value) / 4096 * 3300;
-		
+		float temp = ((float)value) / 4095 * 3300;
 		return  temp = ((temp - 760.0) / 2.5) + 25;
 	}
 
@@ -50,5 +49,6 @@ private:
 		return HAL_ADC_GetValue(&hadc1);
 	}
 
+private:
 	ADC_HandleTypeDef hadc1;
 };

@@ -2,13 +2,6 @@
 #include <stm32f4xx_hal.h>
 #include <stm32_hal_legacy.h>
 
-enum LevelPowers
-{
-	per_100 = 20999,
-	per_50 = 10499,
-
-};
-
 class Fan
 {
 public:
@@ -26,7 +19,6 @@ public:
 		GPIO_InitStructure.Pull = GPIO_NOPULL;
 		HAL_GPIO_Init(GPIOE, &GPIO_InitStructure);
 
-		
 		fan_pwm_timer.Instance = TIM1;
 		fan_pwm_timer.Init.Prescaler = 7;
 		fan_pwm_timer.Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -45,10 +37,7 @@ public:
 		uint32_t clock = HAL_RCC_GetPCLK2Freq();
 
 		HAL_TIM_PWM_ConfigChannel(&fan_pwm_timer, &sConfigOC, TIM_CHANNEL_1);
-
-		
 	}
-
 
 	void SetPower(int8_t power)
 	{
@@ -56,7 +45,6 @@ public:
 		if (power != _cur_power)
 		{
 			_cur_power = power;
-
 			TIM1->CCR1 = GetPulseLength(power);
 		}
 	}
@@ -73,7 +61,6 @@ public:
 		_fan_status = false;
 	}
 
-
 	bool IsOn()
 	{
 		return _fan_status;
@@ -86,9 +73,13 @@ private:
 		return ((_tim_period + 1) * percent) / 100 - 1;
 	}
 
-	static const uint32_t _tim_period = 20999;
+private:
+
 	TIM_HandleTypeDef fan_pwm_timer = {};
+
+	static const uint32_t _tim_period = 20999;
+	bool _fan_status = false;
 	int8_t _cur_power = 0;
 
-	bool _fan_status = false;
+	
 };
