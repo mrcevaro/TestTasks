@@ -660,15 +660,15 @@
     <ClCompile Include="main.cpp">
       <Filter>Source files</Filter>
     </ClCompile>
+    <ClCompile Include="communicate.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.hpp">
       <Filter>Header files</Filter>
     </ClInclude>
     <ClInclude Include="device.hpp">
-      <Filter>Header files</Filter>
-    </ClInclude>
-    <ClInclude Include="uart.hpp">
       <Filter>Header files</Filter>
     </ClInclude>
     <ClInclude Include="temperature_sensor.hpp">
@@ -680,7 +680,10 @@
     <ClInclude Include="fan.hpp">
       <Filter>Header files</Filter>
     </ClInclude>
-    <ClInclude Include="monitoring.hpp">
+    <ClInclude Include="control_device.hpp">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="mcu.hpp">
       <Filter>Header files</Filter>
     </ClInclude>
   </ItemGroup>
